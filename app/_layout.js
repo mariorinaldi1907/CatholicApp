@@ -1,30 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';   // from your Step 3
 import { AuthContext } from '../lib/auth';
+import { useState } from 'react';
+import { migrate } from '../lib/db';
 
 export default function RootLayout() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // DB migration (runs once)
+  useEffect(() => { migrate(); }, []);
+
+  // Auth bootstrapping (from Step 3)
   useEffect(() => {
     let mounted = true;
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
       setSession(session);
       setLoading(false);
     });
-
-    // Listen for auth changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription?.unsubscribe?.();
-    };
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => { mounted = false; sub.subscription?.unsubscribe?.(); };
   }, []);
 
   return (
