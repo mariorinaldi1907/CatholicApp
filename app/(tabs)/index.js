@@ -1,7 +1,8 @@
+import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import dayjs from 'dayjs';            // if you don’t have it: npm i dayjs
+import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getTodayMood, upsertMood } from '../../lib/db';
+import { upsertMoodCloud } from '../../lib/moodsApi'; // <-- NEW
 import { verseForScore } from '../../services/scripture';
 
 export default function Home() {
@@ -27,7 +28,14 @@ export default function Home() {
 
   async function onSave() {
     try {
+      // 1️⃣ Save locally first
       await upsertMood({ date: today, score, note });
+
+      // 2️⃣ Try to save to Supabase (don't block UI if it fails)
+      upsertMoodCloud({ date: today, score, note }).catch(err => {
+        console.warn('Cloud save failed:', err.message);
+      });
+
       const newSaved = { date: today, score, note };
       setSaved(newSaved);
       setSuggestion(verseForScore(score));
@@ -43,9 +51,9 @@ export default function Home() {
         <Text style={s.h1}>How are you feeling today?</Text>
 
         <View style={s.row}>
-          {[1,2,3,4,5].map((n) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <Pressable key={n} style={[s.emoji, score === n && s.emojiActive]} onPress={() => setScore(n)}>
-              <Text style={s.big}>{n===1?'😞':n===2?'😕':n===3?'😐':n===4?'🙂':'😄'}</Text>
+              <Text style={s.big}>{n === 1 ? '😞' : n === 2 ? '😕' : n === 3 ? '😐' : n === 4 ? '🙂' : '😄'}</Text>
               <Text style={s.small}>{n}</Text>
             </Pressable>
           ))}

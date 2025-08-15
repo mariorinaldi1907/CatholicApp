@@ -1,22 +1,24 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
-import { listEntries } from '../../lib/db';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { listEntriesCloud } from '../../lib/journalApi';
 
 export default function JournalList() {
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const rows = await listEntries(200);
-    setItems(rows);
+    try {
+      setLoading(true);
+      const rows = await listEntriesCloud(200);
+      setItems(rows);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // Reload when returning to this tab
-  useFocusEffect(() => {
-    load();
-  });
-
   useEffect(() => { load(); }, []);
+  useFocusEffect(useCallback(() => { load(); }, []));
 
   return (
     <View style={s.wrap}>
@@ -27,7 +29,9 @@ export default function JournalList() {
         </Link>
       </View>
 
-      {items.length === 0 ? (
+      {loading ? (
+        <ActivityIndicator />
+      ) : items.length === 0 ? (
         <Text style={s.empty}>No entries yet. Tap “New” to add your first reflection.</Text>
       ) : (
         <FlatList
@@ -39,9 +43,7 @@ export default function JournalList() {
               <Pressable style={s.card}>
                 <Text style={s.title} numberOfLines={1}>{item.title}</Text>
                 <Text style={s.snip} numberOfLines={2}>{item.body ?? ''}</Text>
-                <Text style={s.date}>
-                  {new Date(item.created_at).toLocaleString()}
-                </Text>
+                <Text style={s.date}>{new Date(item.created_at).toLocaleString()}</Text>
               </Pressable>
             </Link>
           )}
